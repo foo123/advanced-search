@@ -1,0 +1,66 @@
+AdvancedSearch.VERSION = 0.1.0
+[
+    "term",
+    [
+        [
+            {
+                "term": "term",
+                "field": null,
+                "op": null
+            }
+        ]
+    ]
+]
+[
+    "field::term",
+    [
+        [
+            {
+                "term": "term",
+                "field": "field",
+                "op": null
+            }
+        ]
+    ]
+]
+[
+    "field::>=term field::<=term2",
+    [
+        [
+            {
+                "term": "term",
+                "field": "field",
+                "op": ">="
+            },
+            {
+                "term": "term2",
+                "field": "field",
+                "op": "<="
+            }
+        ]
+    ]
+]
+[
+    "field::>=term field::<=term2, field2::~term3",
+    [
+        [
+            {
+                "term": "term",
+                "field": "field",
+                "op": ">="
+            },
+            {
+                "term": "term2",
+                "field": "field",
+                "op": "<="
+            }
+        ],
+        [
+            {
+                "term": "term3",
+                "field": "field2",
+                "op": "~"
+            }
+        ]
+    ]
+]
