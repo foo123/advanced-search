@@ -1,10 +1,9 @@
 /**
-* advanced-search
+*  advanced-search
+*  Transform any search box / search term query into an advanced multi-field search with custom search operators (PHP, Node/XPCOM/JS, Python)
 *
-* Transform any search box / search term query into an advanced multi-field search with custom search operators (PHP, Node/XPCOM/JS, Python)
-*
-* https://github.com/foo123/advanced-search
-* @version 0.1.0
+*  @version 0.2.0
+*  https://github.com/foo123/advanced-search
 **/
 !function( root, name, factory ) {
 "use strict";
@@ -28,14 +27,8 @@ var PROTO = 'prototype', HAS = 'hasOwnProperty',
     trim = String[PROTO].trim
         ? function( s ){ return s.trim(); }
         : function( s ){ return s.replace(trim_re, ''); },
-    escaped_re = /([.*+?^${}()|[\]\/\\\-])/g,
     AdvancedSearch
 ;
-
-function esc_re( s )
-{
-    return s.replace(escaped_re, '\\$1');
-}
 
 AdvancedSearch = function AdvancedSearch( operators, aliases ) {
     var self = this;
@@ -44,47 +37,31 @@ AdvancedSearch = function AdvancedSearch( operators, aliases ) {
     self.aliases = aliases || [];
     self.q = null;
 };
-AdvancedSearch.VERSION = '0.1.0';
+AdvancedSearch.VERSION = '0.2.0';
 AdvancedSearch.parse = function parse( query, operators, aliases, delims ) {
     // parse advanced search
-    var fields = {}, factors = [],
-        or_delim, and_delim, field_delim,
-        l, i, c, j, k, in_string, terms, term, field, op, term_re, m
+    var factors = [],
+        or_delim, and_delim, or_delim_len, and_delim_len, op_len,
+        l, i, c, j, in_string, terms, term, field, op
     ;
     
     query = trim('' + query);
-    if ( !query || !query.length ) return [[], []];
+    if ( !query || !query.length ) return factors;
     
     aliases = aliases || {};
     delims = delims || {};
     or_delim = delims[HAS]('or') ? delims['or'] : ',';
     and_delim = delims[HAS]('and') ? delims['and'] : ' ';
-    field_delim = esc_re(delims[HAS]('field') ? delims['field'] : '::');
+    or_delim_len = or_delim.length;
+    and_delim_len = and_delim.length;
+    op_len = operators.length;
     
     l = query.length; i = 0; in_string = null;
-    terms = []; term = '';
+    terms = []; field = null; op = null; term = '';
     while ( i < l )
     {
-        c = query.charAt( i++ );
-        if ( or_delim === c )
-        {
-            if ( in_string )
-            {
-                term += c;
-            }
-            else
-            {
-                if ( term.length )
-                {
-                    terms.push( term );
-                    term = '';
-                }
-                if ( terms.length ) factors.push( terms );
-                terms = [];
-                term = '';
-            }
-        }
-        else if ( '"' === c || "'" === c )
+        c = query.charAt( i );
+        if ( '"' === c || "'" === c )
         {
             if ( in_string === c )
             {
@@ -98,67 +75,67 @@ AdvancedSearch.parse = function parse( query, operators, aliases, delims ) {
             {
                 in_string = c;
             }
+            i++;
+            continue;
         }
-        else if ( and_delim === c )
+        else if ( in_string )
         {
-            if ( in_string )
+            term += c;
+            i++;
+            continue;
+        }
+        
+        if ( null == op )
+        {
+            for(j=0; j<op_len; j++)
             {
-                term += c;
+                if ( operators[j] === query.slice( i,i+operators[j].length ) )
+                {
+                    op = operators[j];
+                    if ( !field && term.length )
+                    {
+                        field = term;
+                        term = '';
+                    }
+                    if ( field && aliases[HAS](field) ) field = aliases[field];
+                    break;
+                }
             }
-            else if ( term.length )
+            if ( op )
             {
-                terms.push( term );
-                term = '';
+                i += op.length;
+                continue;
             }
+        }
+        
+        if ( or_delim === query.slice( i,i+or_delim_len ) )
+        {
+            if ( term.length ) terms.push( {field:field, op:op, term:term} );
+            if ( terms.length ) factors.push( terms );
+            terms = [];
+            field = null; op = null; term = '';
+            i += or_delim_len;
+        }
+        else if ( and_delim === query.slice( i,i+and_delim_len ) )
+        {
+            if ( term.length ) terms.push( {field:field, op:op, term:term} );
+            field = null; op = null; term = '';
+            i += and_delim_len;
         }
         else
         {
             term += c;
+            i++;
         }
     }
-    if ( term.length )
-    {
-        terms.push( term );
-        term = '';
-    }
-    if ( terms.length )
-    {
-        factors.push( terms );
-    }
-    
-    term_re = new RegExp("^(([a-z0-9_\\-]+)"+field_delim+"("+operators.map(esc_re).join('|')+")?)?(.+?)$","i");
-    for(i=0,l=factors.length; i<l; i++)
-    {
-        terms = factors[i];
-        if ( !terms || !terms.length ) continue;
-        for(j=0,k=terms.length; j<k; j++)
-        {
-            term = terms[j];
-            if ( !term || !term.length ) continue;
-            m = term.match( term_re );
-            term = trim(m[4]);
-            field = m[2] ? m[2] : null;
-            op = m[3] ? m[3] : null;
-            if ( op && (0 > operators.indexOf(op)) )
-            {
-                term += op;
-                op = null;
-            }
-            if ( !!field )
-            {
-                if ( aliases[HAS](field) ) field = aliases[field];
-                if ( !fields[HAS](field) ) fields[field] = 1;
-            }
-            factors[i][j] = {'term':term,'field':field,'op':op};
-        }
-    }
-    return [factors, Object.keys(fields)];
+    if ( term.length ) terms.push( {field:field, op:op, term:term} );
+    if ( terms.length ) factors.push( terms );
+    return factors;
 };
 AdvancedSearch[PROTO] = {
     constructor: AdvancedSearch
     
     ,q: null
-    ,fields: null
     ,factors: null
     ,operators: null
     ,aliases: null
@@ -166,7 +143,6 @@ AdvancedSearch[PROTO] = {
     ,dispose: function( ) {
         var self = this;
         self.q = null;
-        self.fields = null;
         self.factors = null;
         self.operators = null;
         self.aliases = null;
@@ -174,12 +150,9 @@ AdvancedSearch[PROTO] = {
     }
     
     ,query: function( query, delims ) {
-        var self = this, r;
+        var self = this;
         self.q = query;
-        r = AdvancedSearch.parse( query, self.operators, self.aliases, delims||{} );
-        self.factors = r[0];
-        self.fields = r[1];
-        return self.factors;
+        return self.factors = AdvancedSearch.parse( query, self.operators, self.aliases, delims||{} );
     }
 };
 // export it

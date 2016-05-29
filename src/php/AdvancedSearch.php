@@ -1,55 +1,37 @@
 <?php
 /**
-* advanced-search
+*  advanced-search
+*  Transform any search box / search term query into an advanced multi-field search with custom search operators (PHP, Node/XPCOM/JS, Python)
 *
-* Transform any search box / search term query into an advanced multi-field search with custom search operators (PHP, Node/XPCOM/JS, Python)
-*
-* https://github.com/foo123/advanced-search
-* @version 0.1.0
+*  @version 0.2.0
+*  https://github.com/foo123/advanced-search
 **/
 if ( !class_exists('AdvancedSearch') )
 {
 class AdvancedSearch
 {
-    const VERSION = '0.1.0';
+    const VERSION = '0.2.0';
     
     public static function parse( $query, $operators, $aliases=array(), $delims=array() )
     {
         // parse advanced search
-        $fields = array( );
-        $factors = array( );
+        $factors = array();
         
         $query = trim('' . $query);
-        if ( empty($query) ) return array($factors, $fields);
+        if ( !$query || !strlen($query) ) return $factors;
         
         $or_delim = isset($delims['or']) ? $delims['or'] : ',';
         $and_delim = isset($delims['and']) ? $delims['and'] : ' ';
-        $field_delim = preg_quote(isset($delims['field']) ? $delims['field'] : '::');
+        $or_delim_len = strlen($or_delim);
+        $and_delim_len = strlen($and_delim);
+        $op_len = count($operators);
         
         $l = strlen($query); $i = 0; $in_string = null;
-        $terms = array(); $term = '';
+        $terms = array(); $field = null; $op = null; $term = '';
         while ( $i < $l )
         {
-            $c = $query[ $i++ ];
-            if ( $or_delim === $c )
-            {
-                if ( $in_string )
-                {
-                    $term .= $c;
-                }
-                else
-                {
-                    if ( strlen($term) )
-                    {
-                        $terms[] = $term;
-                        $term = '';
-                    }
-                    if ( !empty($terms) ) $factors[] = $terms;
-                    $terms = array();
-                    $term = '';
-                }
-            }
-            elseif ( '"' === $c || "'" === $c )
+            $c = $query[ $i ];
+            if ( '"' === $c || "'" === $c )
             {
                 if ( $in_string === $c )
                 {
@@ -63,63 +45,65 @@ class AdvancedSearch
                 {
                     $in_string = $c;
                 }
+                $i++;
+                continue;
             }
-            elseif ( $and_delim === $c )
+            elseif ( $in_string )
             {
-                if ( $in_string )
+                $term .= $c;
+                $i++;
+                continue;
+            }
+            
+            if ( null == $op )
+            {
+                for($j=0; $j<$op_len; $j++)
                 {
-                    $term .= $c;
+                    if ( $operators[$j] === substr($query, $i, strlen($operators[$j]) ) )
+                    {
+                        $op = $operators[$j];
+                        if ( !$field && strlen($term) )
+                        {
+                            $field = $term;
+                            $term = '';
+                        }
+                        if ( $field && isset($aliases[$field]) ) $field = $aliases[$field];
+                        break;
+                    }
                 }
-                elseif ( strlen($term) )
+                if ( $op )
                 {
-                    $terms[] = $term;
-                    $term = '';
+                    $i += strlen($op);
+                    continue;
                 }
+            }
+            
+            if ( $or_delim === substr($query, $i, $or_delim_len ) )
+            {
+                if ( strlen($term) ) $terms[] = array('field'=>$field, 'op'=>$op, 'term'=>$term);
+                if ( !empty($terms) ) $factors[] = $terms;
+                $terms = array();
+                $field = null; $op = null; $term = '';
+                $i += $or_delim_len;
+            }
+            elseif ( $and_delim === substr($query, $i, $and_delim_len ) )
+            {
+                if ( strlen($term) ) $terms[] = array('field'=>$field, 'op'=>$op, 'term'=>$term);
+                $field = null; $op = null; $term = '';
+                $i += $and_delim_len;
             }
             else
             {
                 $term .= $c;
+                $i++;
             }
         }
-        if ( strlen($term) )
-        {
-            $terms[] = $term;
-            $term = '';
-        }
-        if ( !empty($terms) )
-        {
-            $factors[] = $terms;
-        }
-        
-        $term_re = "/^(([a-z0-9_\-]+){$field_delim}(".implode('|',array_map('preg_quote',$operators)).")?)?(.+?)$/i";
-        foreach($factors as $i=>$terms)
-        {
-            if ( empty($terms) ) continue;
-            foreach($terms as $j=>$term)
-            {
-                if ( empty($term) ) continue;
-                preg_match($term_re, $term, $m);
-                $term = trim($m[4]);
-                $field = empty($m[2]) ? null : $m[2];
-                $op = empty($m[3]) ? null : $m[3];
-                if ( $op && !in_array($op, $operators) )
-                {
-                    $term .= $op;
-                    $op = null;
-                }
-                if ( !empty($field) )
-                {
-                    if ( isset($aliases[$field]) ) $field = $aliases[$field];
-                    if ( !isset($fields[$field]) ) $fields[$field] = 1;
-                }
-                $factors[$i][$j] = array('term'=>$term,'field'=>$field,'op'=>$op);
-            }
-        }
-        return array($factors, array_keys($fields));
+        if ( strlen($term) ) $terms[] = array('field'=>$field, 'op'=>$op, 'term'=>$term);
+        if ( !empty($terms) ) $factors[] = $terms;
+        return $factors;
     }
     
     public $q = null;
-    public $fields = null;
     public $factors = null;
     public $operators = null;
     public $aliases = null;
@@ -144,7 +128,6 @@ class AdvancedSearch
     public function dispose( )
     {
         $this->q = null;
-        $this->fields = null;
         $this->factors = null;
         $this->operators = null;
         $this->aliases = null;
@@ -154,10 +137,7 @@ class AdvancedSearch
     public function query( $query, $delims=array() )
     {
         $this->q = $query;
-        $r = self::parse( $query, $this->operators, $this->aliases, $delims );
-        $this->factors = $r[0];
-        $this->fields = $r[1];
-        return $this->factors;
+        return $this->factors = self::parse( $query, $this->operators, $this->aliases, $delims );
     }
 }
 }

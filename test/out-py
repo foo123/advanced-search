@@ -1,0 +1,8 @@
+AdvancedSearch Module loaded succesfully
+AdvancedSearch.VERSION = 0.2.0
+["term", [[{"field": null, "term": "term", "op": null}]]]
+["~\"term term2\"", [[{"field": null, "term": "term term2", "op": "~"}]]]
+["field=term", [[{"field": "field", "term": "term", "op": "="}]]]
+["field>=term field<=term2", [[{"field": "field", "term": "term", "op": ">="}, {"field": "field", "term": "term2", "op": "<="}]]]
+["field>=term field<=term2, field2~term3", [[{"field": "field", "term": "term", "op": ">="}, {"field": "field", "term": "term2", "op": "<="}], [{"field": "field2", "term": "term3", "op": "~"}]]]
+["field>=\"term term2\" field<=term2, field2~\"field2~term3\", \"field2~term3\"", [[{"field": "field", "term": "term term2", "op": ">="}, {"field": "field", "term": "term2", "op": "<="}], [{"field": "field2", "term": "field2~term3", "op": "~"}], [{"field": null, "term": "field2~term3", "op": null}]]]

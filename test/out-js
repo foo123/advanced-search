@@ -1,65 +1,108 @@
-AdvancedSearch.VERSION = 0.1.0
+AdvancedSearch.VERSION = 0.2.0
 [
     "term",
     [
         [
             {
-                "term": "term",
                 "field": null,
-                "op": null
+                "op": null,
+                "term": "term"
             }
         ]
     ]
 ]
 [
-    "field::term",
+    "~\"term term2\"",
     [
         [
             {
-                "term": "term",
-                "field": "field",
-                "op": null
+                "field": null,
+                "op": "~",
+                "term": "term term2"
             }
         ]
     ]
 ]
 [
-    "field::>=term field::<=term2",
+    "field=term",
     [
         [
             {
-                "term": "term",
                 "field": "field",
-                "op": ">="
+                "op": "=",
+                "term": "term"
+            }
+        ]
+    ]
+]
+[
+    "field>=term field<=term2",
+    [
+        [
+            {
+                "field": "field",
+                "op": ">=",
+                "term": "term"
             },
             {
-                "term": "term2",
                 "field": "field",
-                "op": "<="
+                "op": "<=",
+                "term": "term2"
             }
         ]
     ]
 ]
 [
-    "field::>=term field::<=term2, field2::~term3",
+    "field>=term field<=term2, field2~term3",
     [
         [
             {
-                "term": "term",
                 "field": "field",
-                "op": ">="
+                "op": ">=",
+                "term": "term"
             },
             {
-                "term": "term2",
                 "field": "field",
-                "op": "<="
+                "op": "<=",
+                "term": "term2"
             }
         ],
         [
             {
-                "term": "term3",
                 "field": "field2",
-                "op": "~"
+                "op": "~",
+                "term": "term3"
+            }
+        ]
+    ]
+]
+[
+    "field>=\"term term2\" field<=term2, field2~\"field2~term3\", \"field2~term3\"",
+    [
+        [
+            {
+                "field": "field",
+                "op": ">=",
+                "term": "term term2"
+            },
+            {
+                "field": "field",
+                "op": "<=",
+                "term": "term2"
+            }
+        ],
+        [
+            {
+                "field": "field2",
+                "op": "~",
+                "term": "field2~term3"
+            }
+        ],
+        [
+            {
+                "field": null,
+                "op": null,
+                "term": "field2~term3"
             }
         ]
     ]

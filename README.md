@@ -21,76 +21,121 @@ function echo( s )
 echo("AdvancedSearch.VERSION = " + AdvancedSearch.VERSION);
 
 echo(['term',AdvancedSearch().query('term')]);
-echo(['field::term',AdvancedSearch().query('field::term')]);
-echo(['field::>=term field::<=term2',AdvancedSearch().query('field::>=term field::<=term2')]);
-echo(['field::>=term field::<=term2, field2::~term3',AdvancedSearch().query('field::>=term field::<=term2, field2::~term3')]);
+echo(['~"term term2"',AdvancedSearch().query('~"term term2"')]);
+echo(['field=term',AdvancedSearch().query('field=term')]);
+echo(['field>=term field<=term2',AdvancedSearch().query('field>=term field<=term2')]);
+echo(['field>=term field<=term2, field2~term3',AdvancedSearch().query('field>=term field<=term2, field2~term3')]);
+echo(['field>="term term2" field<=term2, field2~"field2~term3", "field2~term3"',AdvancedSearch().query('field>="term term2" field<=term2, field2~"field2~term3", "field2~term3"')]);
 ```
 
 **output**
 
 ```text
-AdvancedSearch.VERSION = 0.1.0
+AdvancedSearch.VERSION = 0.2.0
 [
     "term",
     [
         [
             {
-                "term": "term",
                 "field": null,
-                "op": null
+                "op": null,
+                "term": "term"
             }
         ]
     ]
 ]
 [
-    "field::term",
+    "~\"term term2\"",
     [
         [
             {
-                "term": "term",
-                "field": "field",
-                "op": null
+                "field": null,
+                "op": "~",
+                "term": "term term2"
             }
         ]
     ]
 ]
 [
-    "field::>=term field::<=term2",
+    "field=term",
     [
         [
             {
-                "term": "term",
                 "field": "field",
-                "op": ">="
+                "op": "=",
+                "term": "term"
+            }
+        ]
+    ]
+]
+[
+    "field>=term field<=term2",
+    [
+        [
+            {
+                "field": "field",
+                "op": ">=",
+                "term": "term"
             },
             {
-                "term": "term2",
                 "field": "field",
-                "op": "<="
+                "op": "<=",
+                "term": "term2"
             }
         ]
     ]
 ]
 [
-    "field::>=term field::<=term2, field2::~term3",
+    "field>=term field<=term2, field2~term3",
     [
         [
             {
-                "term": "term",
                 "field": "field",
-                "op": ">="
+                "op": ">=",
+                "term": "term"
             },
             {
-                "term": "term2",
                 "field": "field",
-                "op": "<="
+                "op": "<=",
+                "term": "term2"
             }
         ],
         [
             {
-                "term": "term3",
                 "field": "field2",
-                "op": "~"
+                "op": "~",
+                "term": "term3"
+            }
+        ]
+    ]
+]
+[
+    "field>=\"term term2\" field<=term2, field2~\"field2~term3\", \"field2~term3\"",
+    [
+        [
+            {
+                "field": "field",
+                "op": ">=",
+                "term": "term term2"
+            },
+            {
+                "field": "field",
+                "op": "<=",
+                "term": "term2"
+            }
+        ],
+        [
+            {
+                "field": "field2",
+                "op": "~",
+                "term": "field2~term3"
+            }
+        ],
+        [
+            {
+                "field": null,
+                "op": null,
+                "term": "field2~term3"
             }
         ]
     ]
@@ -98,7 +143,7 @@ AdvancedSearch.VERSION = 0.1.0
 ```
 
 The output consists of a tree representing the complex query, where the first level
-reepresents `OR` clauses and the second level `AND` clauses (inside each `OR` clause) including operators (default `null` interpret as you like) and specific search `field` references (see above example to get an idea).
+represents `OR` clauses and the second level `AND` clauses (inside each `OR` clause) including operators (default `null` interpret as you like) and specific search `field` references (see above example to get an idea).
 
 One could then contruct an actual query out of this (note how the original GUI of the application did not change at all, it was simply leveraged in functionality) like the following:
 
